@@ -1,0 +1,26 @@
+# Environment & secrets
+.env
+agentic-venv/
+
+# Build artifacts (large, regenerable via `python cli.py build`)
+.cache/
+
+# Generated output
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Testing
+.pytest_cache/

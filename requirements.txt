@@ -1,0 +1,12 @@
+anthropic
+openai
+networkx
+sentence-transformers
+datasets
+click
+pytest
+python-dotenv
+pydantic>=2.0
+mem0ai
+numpy
+huggingface-hub
