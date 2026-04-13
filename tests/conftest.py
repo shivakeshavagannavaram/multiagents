@@ -8,8 +8,8 @@ from unittest.mock import MagicMock
 import networkx as nx
 import pytest
 
-from saplvl.ingestor.registry import ToolRegistry
-from saplvl.models import (
+from conv_gen.ingestor.registry import ToolRegistry
+from conv_gen.models import (
     APIEndpoint,
     Conversation,
     JudgeScore,
@@ -63,6 +63,16 @@ def sample_tools():
                     optional_parameters=[
                         ToolParameter(name="max_price", type="integer", description="Max price"),
                     ],
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "results": {"type": "array", "items": {"type": "object", "properties": {
+                                "hotel_id": {"type": "string"},
+                                "hotel_name": {"type": "string"},
+                                "price": {"type": "number"},
+                            }}},
+                        },
+                    },
                 ),
                 APIEndpoint(
                     name="book_hotel",
@@ -72,6 +82,14 @@ def sample_tools():
                         ToolParameter(name="hotel_id", type="string", description="Hotel ID"),
                         ToolParameter(name="check_in", type="string", description="Check-in date"),
                     ],
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "booking_id": {"type": "string"},
+                            "hotel_id": {"type": "string"},
+                            "confirmation_status": {"type": "string"},
+                        },
+                    },
                 ),
             ],
         ),
@@ -90,6 +108,16 @@ def sample_tools():
                         ToolParameter(name="destination", type="string", description="Destination"),
                         ToolParameter(name="date", type="string", description="Travel date"),
                     ],
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "flights": {"type": "array", "items": {"type": "object", "properties": {
+                                "flight_id": {"type": "string"},
+                                "airline": {"type": "string"},
+                                "price": {"type": "number"},
+                            }}},
+                        },
+                    },
                 ),
                 APIEndpoint(
                     name="book_flight",
@@ -98,6 +126,14 @@ def sample_tools():
                     required_parameters=[
                         ToolParameter(name="flight_id", type="string", description="Flight ID"),
                     ],
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "booking_id": {"type": "string"},
+                            "flight_id": {"type": "string"},
+                            "ticket_status": {"type": "string"},
+                        },
+                    },
                 ),
             ],
         ),
@@ -131,6 +167,16 @@ def sample_tools():
                         ToolParameter(name="city", type="string", description="City"),
                         ToolParameter(name="cuisine", type="string", description="Cuisine type"),
                     ],
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "restaurants": {"type": "array", "items": {"type": "object", "properties": {
+                                "restaurant_id": {"type": "string"},
+                                "restaurant_name": {"type": "string"},
+                                "cuisine": {"type": "string"},
+                            }}},
+                        },
+                    },
                 ),
                 APIEndpoint(
                     name="make_reservation",
@@ -141,6 +187,14 @@ def sample_tools():
                         ToolParameter(name="date", type="string", description="Reservation date"),
                         ToolParameter(name="party_size", type="integer", description="Number of guests"),
                     ],
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "reservation_id": {"type": "string"},
+                            "restaurant_id": {"type": "string"},
+                            "reservation_status": {"type": "string"},
+                        },
+                    },
                 ),
             ],
         ),
@@ -172,51 +226,11 @@ def sample_registry(sample_tools):
 
 @pytest.fixture
 def sample_graph(sample_registry):
-    """Build a small graph from sample tools (without semantic similarity to avoid loading model)."""
-    graph = nx.DiGraph()
+    """Build a small KG from sample tools for testing."""
+    from conv_gen.graph.builder import ToolGraphBuilder
 
-    for tool in sample_registry.all_tools():
-        for endpoint in tool.api_list:
-            node_id = (tool.tool_name, endpoint.name)
-            graph.add_node(
-                node_id,
-                category=tool.category,
-                tool_name=tool.tool_name,
-                api_name=endpoint.name,
-                description=endpoint.description,
-                method=endpoint.method,
-                input_params={p.name: p.type for p in endpoint.all_parameters},
-                inferred_outputs={f"{endpoint.name.split('_')[-1]}_id"},
-            )
-
-    # Add some edges manually
-    graph.add_edge(
-        ("HotelFinder", "search_hotels"), ("HotelFinder", "book_hotel"),
-        edge_type="parameter_compatibility", weight=2.0,
-    )
-    graph.add_edge(
-        ("FlightSearch", "search_flights"), ("FlightSearch", "book_flight"),
-        edge_type="parameter_compatibility", weight=2.0,
-    )
-    graph.add_edge(
-        ("RestaurantGuide", "search_restaurants"), ("RestaurantGuide", "make_reservation"),
-        edge_type="parameter_compatibility", weight=2.0,
-    )
-    # Cross-tool edges
-    graph.add_edge(
-        ("HotelFinder", "search_hotels"), ("FlightSearch", "search_flights"),
-        edge_type="same_category", weight=1.0,
-    )
-    graph.add_edge(
-        ("FlightSearch", "search_flights"), ("HotelFinder", "search_hotels"),
-        edge_type="same_category", weight=1.0,
-    )
-    graph.add_edge(
-        ("WeatherAPI", "get_forecast"), ("HotelFinder", "search_hotels"),
-        edge_type="semantic_similarity", weight=0.7,
-    )
-
-    return graph
+    builder = ToolGraphBuilder(sample_registry)
+    return builder.build()
 
 
 @pytest.fixture

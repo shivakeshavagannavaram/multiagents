@@ -5,12 +5,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from saplvl.agents.assistant import AssistantAgent
-from saplvl.agents.tool_executor import ToolExecutorAgent
-from saplvl.agents.user_simulator import UserSimulatorAgent
-from saplvl.memory.context import ConversationContext
-from saplvl.models import Message, ToolCall
-from saplvl.simulator.executor import SessionState, ToolSimulator
+from conv_gen.agents.assistant import AssistantAgent
+from conv_gen.agents.tool_executor import ToolExecutorAgent
+from conv_gen.agents.user_simulator import UserSimulatorAgent
+from conv_gen.memory.context import ConversationContext
+from conv_gen.models import Message, ToolCall
+from conv_gen.simulator.executor import SessionState, ToolSimulator
 
 
 class TestUserSimulatorAgent:
@@ -68,16 +68,49 @@ class TestAssistantAgent:
 
     def test_build_tool_definitions(self, mock_anthropic_client, sample_registry):
         agent = AssistantAgent(mock_anthropic_client, sample_registry)
-        tools = agent._build_tool_definitions([
+        tools, name_map, param_maps = agent._build_tool_definitions([
             ("HotelFinder", "search_hotels"),
             ("FlightSearch", "search_flights"),
         ])
         assert len(tools) == 2
         assert all("name" in t and "input_schema" in t for t in tools)
+        assert len(name_map) == 2
+        # param_maps has one entry per tool, mapping sanitized names to originals
+        assert len(param_maps) == 2
+        for tool_id in name_map:
+            assert tool_id in param_maps
+            assert isinstance(param_maps[tool_id], dict)
 
     def test_sanitize_name(self):
         assert AssistantAgent._sanitize_name("Hotel Finder") == "Hotel_Finder"
         assert AssistantAgent._sanitize_name("123tool") == "t_123tool"
+
+    def test_sanitize_param_name(self):
+        """Parameter name sanitization for Anthropic's property-key pattern."""
+        assert AssistantAgent._sanitize_param_name("user name") == "user_name"
+        assert AssistantAgent._sanitize_param_name("email-address") == "email-address"
+        assert AssistantAgent._sanitize_param_name("query.filter") == "query.filter"
+        assert AssistantAgent._sanitize_param_name("user[0]") == "user_0"
+        assert AssistantAgent._sanitize_param_name("foo/bar") == "foo_bar"
+        # Empty / whitespace-only fallback
+        assert AssistantAgent._sanitize_param_name("") == "param"
+        assert AssistantAgent._sanitize_param_name("   ") == "param"
+        # Leading/trailing underscores stripped
+        assert AssistantAgent._sanitize_param_name("_x_") == "x"
+        # Length capped at 64
+        assert len(AssistantAgent._sanitize_param_name("a" * 80)) == 64
+
+    def test_is_auth_param_credential_stripping(self):
+        """Credential parameter detection for the stripping filter."""
+        from conv_gen.agents.assistant import _is_auth_param
+        # Should be stripped
+        for name in ["access_token", "api_key", "apikey", "password",
+                     "client_secret", "bearer", "authorization", "x_access_token"]:
+            assert _is_auth_param(name), f"should strip {name!r}"
+        # Should NOT be stripped
+        for name in ["post_id", "hotel_id", "keyword", "key_features",
+                     "author", "name", "city", "fixture_id"]:
+            assert not _is_auth_param(name), f"should keep {name!r}"
 
 
 class TestToolExecutorAgent:

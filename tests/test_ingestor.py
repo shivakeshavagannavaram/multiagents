@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from saplvl.ingestor.parser import ToolBenchParser
-from saplvl.ingestor.registry import ToolRegistry
-from saplvl.models import Tool
+from conv_gen.ingestor.parser import ToolBenchParser
+from conv_gen.ingestor.registry import ToolRegistry
+from conv_gen.models import Tool
 
 
 class TestToolBenchParser:

@@ -1,0 +1,126 @@
+{
+  "label_a": "Run A (no steering)",
+  "label_b": "Run B (steering)",
+  "run_a_path": "output/run_no_steering.jsonl",
+  "run_b_path": "output/run_with_steering.jsonl",
+  "run_a": {
+    "diversity": {
+      "primary": {
+        "tool_usage_entropy": 0.9878144692489838,
+        "unique_tools_used": 362,
+        "unique_tool_coverage_ratio": 0.032029729251459915
+      },
+      "secondary": {
+        "top_5_tool_concentration": 0.05250596658711217,
+        "tool_combination_entropy": 7.215485357162529,
+        "domain_coverage_uniformity": 0.7767707895777479,
+        "unique_chain_ratio": 0.9933333333333333,
+        "unique_chain_combinations": 149
+      },
+      "totals": {
+        "total_conversations": 150,
+        "total_tool_calls": 419,
+        "registry_size": 11302
+      }
+    },
+    "quality": {
+      "quality": {
+        "naturalness": 4.506666666666667,
+        "tool_correctness": 3.6666666666666665,
+        "task_completion": 4.043333333333333,
+        "overall_mean": 4.072222222222222,
+        "scored_count": 150
+      },
+      "spec": {
+        "ms_mt_rate": 0.5666666666666667,
+        "real_chaining_rate": 0.58
+      }
+    },
+    "total_conversations": 150,
+    "per_type": {
+      "full_workflow": {
+        "total": 45,
+        "ms_mt": 37
+      },
+      "multi_step_chain": {
+        "total": 60,
+        "ms_mt": 46
+      },
+      "parallel_lookup": {
+        "total": 15,
+        "ms_mt": 1
+      },
+      "quick_lookup": {
+        "total": 15,
+        "ms_mt": 0
+      },
+      "simple_sequential": {
+        "total": 15,
+        "ms_mt": 1
+      }
+    }
+  },
+  "run_b": {
+    "diversity": {
+      "primary": {
+        "tool_usage_entropy": 0.9914081615717355,
+        "unique_tools_used": 376,
+        "unique_tool_coverage_ratio": 0.03326844806228986
+      },
+      "secondary": {
+        "top_5_tool_concentration": 0.04028436018957346,
+        "tool_combination_entropy": 7.175485357162529,
+        "domain_coverage_uniformity": 0.7925451755903392,
+        "unique_chain_ratio": 0.98,
+        "unique_chain_combinations": 147
+      },
+      "totals": {
+        "total_conversations": 150,
+        "total_tool_calls": 422,
+        "registry_size": 11302
+      }
+    },
+    "quality": {
+      "quality": {
+        "naturalness": 4.526666666666666,
+        "tool_correctness": 3.65,
+        "task_completion": 4.12,
+        "overall_mean": 4.098888888888889,
+        "scored_count": 150
+      },
+      "spec": {
+        "ms_mt_rate": 0.62,
+        "real_chaining_rate": 0.6
+      }
+    },
+    "total_conversations": 150,
+    "per_type": {
+      "full_workflow": {
+        "total": 45,
+        "ms_mt": 40
+      },
+      "multi_step_chain": {
+        "total": 60,
+        "ms_mt": 47
+      },
+      "parallel_lookup": {
+        "total": 15,
+        "ms_mt": 4
+      },
+      "quick_lookup": {
+        "total": 15,
+        "ms_mt": 0
+      },
+      "simple_sequential": {
+        "total": 15,
+        "ms_mt": 2
+      }
+    }
+  },
+  "tool_overlap": {
+    "both": 155,
+    "only_a": 207,
+    "only_b": 221,
+    "total_unique": 583
+  }
+}

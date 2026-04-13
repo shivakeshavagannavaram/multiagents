@@ -4,13 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from saplvl.agents.assistant import AssistantAgent
-from saplvl.agents.orchestrator import ConversationOrchestrator
-from saplvl.agents.tool_executor import ToolExecutorAgent
-from saplvl.agents.user_simulator import UserSimulatorAgent
-from saplvl.judgellm.judge import JudgeLLM
-from saplvl.models import JudgeScore
-from saplvl.simulator.executor import SessionState, ToolSimulator
+from conv_gen.agents.assistant import AssistantAgent
+from conv_gen.agents.orchestrator import ConversationOrchestrator
+from conv_gen.agents.tool_executor import ToolExecutorAgent
+from conv_gen.agents.user_simulator import UserSimulatorAgent
+from conv_gen.judgellm.judge import JudgeLLM
+from conv_gen.models import JudgeScore
+from conv_gen.simulator.executor import SessionState, ToolSimulator
 
 
 def _make_user_agent():
@@ -148,17 +148,36 @@ class TestConversationOrchestrator:
         assert conv.judge_scores.mean_score == pytest.approx(2.5)
 
     def test_repair_hints_generated(self):
+        """Verify that low-scoring dimensions produce targeted repair hints.
+
+        The hint strings have evolved over time. Rather than matching
+        specific keywords that may drift again, we assert that each
+        low-scoring dimension produces SOME hint content and that the
+        hints are distinguishable from each other.
+        """
         low_natural = JudgeScore(naturalness=2.0, tool_correctness=4.0, task_completion=4.0)
-        hints = ConversationOrchestrator._build_repair_hints(low_natural)
-        assert "natural" in hints.lower() or "conversational" in hints.lower()
+        nat_hints = ConversationOrchestrator._build_repair_hints(low_natural)
+        assert nat_hints  # non-empty
+        # The naturalness hint should mention natural flow / conversation style
+        assert any(kw in nat_hints.lower() for kw in ("natural", "conversational", "filler", "empty"))
 
         low_tool = JudgeScore(naturalness=4.0, tool_correctness=2.0, task_completion=4.0)
-        hints = ConversationOrchestrator._build_repair_hints(low_tool)
-        assert "parameter" in hints.lower() or "schema" in hints.lower()
+        tool_hints = ConversationOrchestrator._build_repair_hints(low_tool)
+        assert tool_hints  # non-empty
+        # The tool hint should mention arguments / IDs / values — specifics
+        # of tool-call correctness.
+        assert any(kw in tool_hints.lower() for kw in ("argument", "value", "id", "parameter", "schema"))
 
         low_task = JudgeScore(naturalness=4.0, tool_correctness=4.0, task_completion=2.0)
-        hints = ConversationOrchestrator._build_repair_hints(low_task)
-        assert "request" in hints.lower() or "complete" in hints.lower()
+        task_hints = ConversationOrchestrator._build_repair_hints(low_task)
+        assert task_hints  # non-empty
+        # The task-completion hint should mention workflow / steps / request
+        assert any(kw in task_hints.lower() for kw in ("request", "complete", "workflow", "step"))
+
+        # The three hints should differ from each other (distinct guidance
+        # per failure mode).
+        assert nat_hints != tool_hints
+        assert tool_hints != task_hints
 
     def test_no_judge_still_works(self, sample_registry):
         user_agent = _make_user_agent()

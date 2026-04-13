@@ -1,11 +1,13 @@
 # Environment & secrets
 .env
 agentic-venv/
+.venv/
+venv/
 
 # Build artifacts (large, regenerable via `python cli.py build`)
 .cache/
 
-# Generated output
+# Generated output (deliverable runs are force-added in git — see README)
 output/
 
 # Python
@@ -13,6 +15,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
+build/
+dist/
 
 # IDE
 .idea/
@@ -24,3 +28,9 @@ __pycache__/
 
 # Testing
 .pytest_cache/
+
+# Tool-specific state
+.claude/
+
+# Stray HTML visualization assets (pyvis writes these next to exported HTML)
+lib/

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conv_gen"
+version = "0.1.0"
+description = "Multi-agent generator for multi-turn tool-use conversations over the ToolBench registry."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Shiva Keshava" },
+]
+keywords = [
+    "llm",
+    "tool-use",
+    "toolbench",
+    "synthetic-data",
+    "multi-agent",
+    "knowledge-graph",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "anthropic>=0.40",
+    "openai>=1.50",
+    "click>=8.1",
+    "pydantic>=2.0",
+    "python-dotenv>=1.0",
+    "networkx>=3.0",
+    "sentence-transformers>=2.2",
+    "numpy>=1.24",
+    "datasets>=2.14",
+    "huggingface-hub>=0.20",
+    "mem0ai>=0.1.0",
+    "gdown>=5.0",
+    "pyvis>=0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-xdist>=3.3",
+]
+
+[project.scripts]
+conv-gen = "cli:cli"
+
+[tool.setuptools]
+py-modules = ["cli"]
+
+[tool.setuptools.packages.find]
+include = ["conv_gen*"]
+exclude = ["tests*", "output*", "docs*", ".cache*"]

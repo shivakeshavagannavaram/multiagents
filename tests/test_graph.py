@@ -1,64 +1,91 @@
-"""Tests for the tool graph module."""
+"""Tests for the Knowledge Graph builder."""
 
 import pytest
 
-from saplvl.graph.builder import ToolGraphBuilder
+from conv_gen.graph.builder import ToolGraphBuilder
 
 
 class TestToolGraphBuilder:
-    def test_nodes_added(self, sample_graph, sample_registry):
-        """All endpoints should be graph nodes."""
+    def test_endpoint_nodes_added(self, sample_graph, sample_registry):
+        """All endpoints should have endpoint nodes in the KG."""
         expected_keys = sample_registry.all_endpoint_keys()
-        for key in expected_keys:
-            assert key in sample_graph.nodes()
+        for tool_name, api_name in expected_keys:
+            ep_id = f"endpoint:{tool_name}/{api_name}"
+            assert ep_id in sample_graph.nodes(), f"Missing endpoint node: {ep_id}"
 
-    def test_category_edges(self, sample_graph):
-        """Same-category tools should be connected."""
-        # HotelFinder and FlightSearch are both Travel
-        assert sample_graph.has_edge(
-            ("HotelFinder", "search_hotels"), ("FlightSearch", "search_flights")
-        )
+    def test_category_nodes(self, sample_graph):
+        """Category nodes should exist."""
+        assert "category:Travel" in sample_graph.nodes()
+        assert "category:Weather" in sample_graph.nodes()
+        assert "category:Food" in sample_graph.nodes()
+        assert "category:Finance" in sample_graph.nodes()
 
-    def test_parameter_compatibility_edges(self, sample_graph):
-        """search -> book should have parameter compatibility."""
+    def test_tool_nodes(self, sample_graph):
+        """Tool nodes should exist."""
+        assert "tool:HotelFinder" in sample_graph.nodes()
+        assert "tool:FlightSearch" in sample_graph.nodes()
+
+    def test_structural_edges(self, sample_graph):
+        """Tool should have has_endpoint edges to its endpoints."""
+        assert sample_graph.has_edge("tool:HotelFinder", "endpoint:HotelFinder/search_hotels")
+        edge = sample_graph.edges["tool:HotelFinder", "endpoint:HotelFinder/search_hotels"]
+        assert edge["edge_type"] == "has_endpoint"
+
+    def test_belongs_to_edges(self, sample_graph):
+        """Tools should have belongs_to edges to categories."""
+        assert sample_graph.has_edge("tool:HotelFinder", "category:Travel")
+        edge = sample_graph.edges["tool:HotelFinder", "category:Travel"]
+        assert edge["edge_type"] == "belongs_to"
+
+    def test_same_tool_edges(self, sample_graph):
+        """search -> book within same tool should have same_tool edge."""
         assert sample_graph.has_edge(
-            ("HotelFinder", "search_hotels"), ("HotelFinder", "book_hotel")
+            "endpoint:HotelFinder/search_hotels", "endpoint:HotelFinder/book_hotel"
         )
         edge = sample_graph.edges[
-            ("HotelFinder", "search_hotels"), ("HotelFinder", "book_hotel")
+            "endpoint:HotelFinder/search_hotels", "endpoint:HotelFinder/book_hotel"
         ]
-        assert edge["edge_type"] == "parameter_compatibility"
+        assert edge["edge_type"] == "same_tool"
 
     def test_node_attributes(self, sample_graph):
-        """Nodes should have expected attributes."""
-        node_data = sample_graph.nodes[("HotelFinder", "search_hotels")]
+        """Endpoint nodes should have expected attributes."""
+        node_data = sample_graph.nodes["endpoint:HotelFinder/search_hotels"]
+        assert node_data["node_type"] == "endpoint"
         assert node_data["category"] == "Travel"
         assert node_data["tool_name"] == "HotelFinder"
-        assert "input_params" in node_data
-        assert "city" in node_data["input_params"]
+        assert node_data["schema_quality"] == "complete"
 
     def test_graph_is_directed(self, sample_graph):
         assert sample_graph.is_directed()
 
-    def test_infer_output_fields(self):
-        fields = ToolGraphBuilder._infer_output_fields("search_hotels", "Search for available hotels")
-        assert "hotel_id" in fields or "hotel" in fields
+    def test_output_field_extraction(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "hotel_id": {"type": "string"},
+                "hotel_name": {"type": "string"},
+                "price": {"type": "number"},
+            },
+        }
+        fields = ToolGraphBuilder._extract_output_fields(schema)
+        assert "hotel_id" in fields
+        assert "hotel_name" in fields
+        assert fields["hotel_id"] == "string"
 
-    def test_infer_output_fields_booking(self):
-        fields = ToolGraphBuilder._infer_output_fields("book_room", "Book a hotel room")
-        assert any("id" in f for f in fields)
+    def test_types_compatible(self):
+        assert ToolGraphBuilder._types_compatible("string", "string")
+        assert ToolGraphBuilder._types_compatible("string", "integer")
+        assert not ToolGraphBuilder._types_compatible("boolean", "array")
 
-    def test_param_name_overlap(self):
-        outputs = {"hotel_id", "name"}
-        inputs = {"hotel_id", "check_in"}
-        overlap = ToolGraphBuilder._param_name_overlap(outputs, inputs)
-        assert "hotel_id" in overlap
+    def test_normalize_field_name(self):
+        assert ToolGraphBuilder._normalize_field_name("hotelId") == "hotel_id"
+        assert ToolGraphBuilder._normalize_field_name("CheckInDate") == "check_in_date"
+        assert ToolGraphBuilder._normalize_field_name("hotel_ID") == "hotel_id"
 
-    def test_param_name_overlap_no_match(self):
-        outputs = {"flight_id"}
-        inputs = {"restaurant_id", "date"}
-        overlap = ToolGraphBuilder._param_name_overlap(outputs, inputs)
-        assert len(overlap) == 0
+    def test_field_root(self):
+        assert ToolGraphBuilder._field_root("hotel_id") == "hotel"
+        assert ToolGraphBuilder._field_root("booking_confirmation_id") == "booking_confirmation"
+        assert ToolGraphBuilder._field_root("city") == "city"
 
     def test_save_and_load(self, sample_graph, tmp_path):
         path = tmp_path / "graph.pkl"
@@ -69,3 +96,17 @@ class TestToolGraphBuilder:
         loaded = ToolGraphBuilder.load(path)
         assert loaded.number_of_nodes() == sample_graph.number_of_nodes()
         assert loaded.number_of_edges() == sample_graph.number_of_edges()
+
+    def test_export_json(self, sample_registry, tmp_path):
+        builder = ToolGraphBuilder(sample_registry)
+        builder.build()
+        json_path = tmp_path / "kg.json"
+        builder.export_json(json_path)
+        assert json_path.exists()
+
+        import json
+        with open(json_path) as f:
+            data = json.load(f)
+        assert "nodes" in data
+        assert "edges" in data
+        assert data["summary"]["total_nodes"] > 0

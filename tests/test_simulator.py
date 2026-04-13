@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from saplvl.models import ToolCall
-from saplvl.simulator.executor import SessionState, ToolSimulator
+from conv_gen.models import ToolCall
+from conv_gen.simulator.executor import SessionState, ToolSimulator
 
 
 class TestSessionState:
@@ -87,7 +87,7 @@ class TestToolSimulator:
         session = SessionState()
         output = simulator.execute(tc, session)
         assert output.success
-        assert output.response.get("status") == "confirmed"
+        assert "booking_id" in output.response
 
     def test_session_state_chains(self, sample_registry):
         simulator = ToolSimulator(sample_registry, rng=__import__("random").Random(42))
@@ -111,7 +111,7 @@ class TestToolSimulator:
         mock_openai_client.chat.completions.create.return_value.choices[0].message.content = \
             '{"results": [{"id": "htl_001", "name": "Test Hotel", "price": 150}]}'
 
-        simulator = ToolSimulator(sample_registry, openai_client=mock_openai_client)
+        simulator = ToolSimulator(sample_registry, openai_client=mock_openai_client, use_llm_mocks=True)
         tc = ToolCall(
             tool_name="HotelFinder",
             api_name="search_hotels",
