@@ -29,8 +29,5 @@ dist/
 # Testing
 .pytest_cache/
 
-# Tool-specific state
-.claude/
-
 # Stray HTML visualization assets (pyvis writes these next to exported HTML)
 lib/
